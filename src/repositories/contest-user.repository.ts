@@ -32,4 +32,36 @@ export class ContestUserRepository extends Repository<ContestUser> {
 
     return new PaginatedResponse(contestUsers, count, skip, take);
   }
+
+  public async upsertContestUser({
+    userId,
+    contestId,
+    username,
+    score,
+  }: {
+    userId: number;
+    contestId: number;
+    username: string;
+    score: number;
+  }): Promise<ContestUser> {
+    let contestUser = await this.findOne({
+      where: {
+        userId: userId,
+        contestId: contestId,
+      },
+    });
+
+    if (contestUser) {
+      contestUser.score += score;
+    } else {
+      contestUser = this.create({
+        userId,
+        contestId,
+        username,
+        score,
+      });
+    }
+
+    return this.save(contestUser);
+  }
 }
