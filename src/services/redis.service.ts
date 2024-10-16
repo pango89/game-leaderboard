@@ -23,8 +23,28 @@ export class RedisService {
     await this.redis.zincrby(key, score, value);
   }
 
-  // get top K values from sorted set sorted by decreasing score
+  // get all entries with scores from sorted set sorted by decreasing score
   async zRevRange(key: string, start: number, end: number): Promise<string[]> {
-    return await this.redis.zrevrange(key, start, end);
+    return await this.redis.zrevrange(key, start, end, 'WITHSCORES');
+  }
+
+  // delete key
+  async del(key: string): Promise<void> {
+    await this.redis.del(key);
+  }
+
+  // get count of elements in sorted set
+  async zCard(key: string): Promise<number> {
+    return await this.redis.zcard(key);
+  }
+
+  // get rank of value within sorted set
+  async zRank(key: string, value: string): Promise<number> {
+    return await this.redis.zrank(key, value);
+  }
+
+  // get reverse rank of value within sorted set
+  async zRevRank(key: string, value: string): Promise<number> {
+    return await this.redis.zrevrank(key, value);
   }
 }

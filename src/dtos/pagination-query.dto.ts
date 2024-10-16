@@ -5,7 +5,7 @@ export class PaginationQueryDto {
   @IsOptional()
   @IsNumber()
   @Type(() => Number)
-  public page?: number = 1;
+  public page?: number = 0;
 
   @IsOptional()
   @IsNumber()
