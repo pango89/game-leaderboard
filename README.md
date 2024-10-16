@@ -1,0 +1,1 @@
+This repository contains basic setup to start a new project using nest.js
