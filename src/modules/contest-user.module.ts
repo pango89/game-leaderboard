@@ -6,11 +6,18 @@ import { ContestUserRepository } from '../repositories/contest-user.repository';
 import { ContestUserController } from '../controllers/contest-user.controller';
 import { RedisModule } from './redis.module';
 import { RedisService } from '../services/redis.service';
+import { KafkaModule } from './kafka.module';
+import { KafkaService } from '../services/kafka.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ContestUser]), RedisModule],
+  imports: [TypeOrmModule.forFeature([ContestUser]), RedisModule, KafkaModule],
   controllers: [ContestUserController],
-  providers: [ContestUserService, ContestUserRepository, RedisService],
+  providers: [
+    ContestUserService,
+    ContestUserRepository,
+    RedisService,
+    KafkaService,
+  ],
   exports: [],
 })
 export class ContestUserModule {}

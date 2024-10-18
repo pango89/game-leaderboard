@@ -1,25 +1,49 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PaginatedResponse } from '../dtos/paginated-response.dto';
 import { RedisService } from './redis.service';
 import { LeaderboardEntry } from '../dtos/leaderboard-entry.dt';
 import { ContestUserService } from './contest-user.service';
+import { Payload } from '@nestjs/microservices';
+import { Consumer } from 'kafkajs';
+import { KafkaService } from './kafka.service';
 
 @Injectable()
-export class LeaderboardService {
+export class LeaderboardService implements OnModuleInit {
   private logger: Logger = new Logger('ContestUserService');
+  private consumer: Consumer;
 
   constructor(
     private readonly redisService: RedisService,
     private readonly contestUserService: ContestUserService,
-  ) {}
+    private readonly kafkaService: KafkaService,
+  ) {
+    this.consumer = this.kafkaService.getClient().consumer({
+      groupId: 'origami-consumer-group',
+    });
+  }
 
   async onModuleInit() {
+    this.logger.log('LeaderboardService initialized');
     await this.initLeaderboard();
+
+    await this.consumer.connect();
+    await this.consumer.subscribe({
+      topic: 'contest.user.score.updated',
+      fromBeginning: true,
+    });
+    await this.consumer.run({
+      eachMessage: async ({ topic, partition, message }) => {
+        console.log(
+          `Received message from topic ${topic}: ${partition} ${message.value.toString()}`,
+        );
+        this.handleContestUserScoreUpdate(message);
+      },
+    });
   }
 
   private async initLeaderboard() {
     try {
-      await this.redisService.del('leaderboard:*');
+      await this.redisService.del('leaderboard:1');
       const contestUsers = await this.contestUserService.getByContestId({
         contestId: 1,
         offset: 0,
@@ -71,5 +95,25 @@ export class LeaderboardService {
     } catch (error) {
       throw error;
     }
+  }
+
+  // Method to consume messages from Kafka topic
+
+  async handleContestUserScoreUpdate(@Payload() message: any) {
+    this.logger.log(`Received message: ${JSON.stringify(message.value)}`);
+
+    // Assuming the message contains contestUser data
+    const contestUserData = JSON.parse(message.value);
+
+    // Update the Redis leaderboard with the new contest user score
+    await this.redisService.zAdd(
+      `leaderboard:${contestUserData.contestId}`,
+      contestUserData.username,
+      contestUserData.score,
+    );
+
+    this.logger.log(
+      `Updated leaderboard for contest ID: ${contestUserData.contestId}`,
+    );
   }
 }

@@ -10,6 +10,7 @@ import { expressMiddleware } from 'cls-rtracer';
 import * as express from 'express';
 import * as requestIp from 'request-ip';
 import { morganMiddleware } from './configurations/http-logger';
+import { Transport } from '@nestjs/microservices';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -40,6 +41,21 @@ async function bootstrap() {
   app.use(express.json());
   app.use(morganMiddleware);
   app.use(requestIp.mw());
+
+  app.connectMicroservice({
+    transport: Transport.KAFKA,
+    options: {
+      client: {
+        clientId: 'origami',
+        brokers: [process.env.KAFKA_BROKER],
+      },
+      consumer: {
+        groupId: 'origami-consumer-group', // Set appropriate consumer group
+      },
+    },
+  });
+
+  await app.startAllMicroservices();
   await app.listen(+process.env.SERVICE_PORT || 3001);
 }
 

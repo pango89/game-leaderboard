@@ -1,17 +1,32 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PaginatedResponse } from '../dtos/paginated-response.dto';
 import { ContestUserRepository } from '../repositories/contest-user.repository';
 import { ContestUser } from '../entities/contest-user.entity';
 import { RedisService } from './redis.service';
+import { KafkaService } from './kafka.service';
+import { Producer } from 'kafkajs';
 
 @Injectable()
-export class ContestUserService {
+export class ContestUserService implements OnModuleInit {
   private logger: Logger = new Logger('ContestUserService');
+  private producer: Producer;
 
   constructor(
     private readonly contestUserRepository: ContestUserRepository,
     private readonly redisService: RedisService,
-  ) {}
+    private readonly kafkaService: KafkaService,
+  ) {
+    this.producer = this.kafkaService.getClient().producer();
+  }
+
+  public async onModuleInit() {
+    await this.init();
+  }
+
+  private async init() {
+    await this.producer.connect();
+    console.log('Producer connected');
+  }
 
   public async getByContestId({
     contestId,
@@ -58,12 +73,19 @@ export class ContestUserService {
         score,
       });
 
-      // update sorted set
-      await this.redisService.zAdd(
-        `leaderboard:${contestUser.contestId}`,
-        contestUser.username,
-        contestUser.score,
-      );
+      await this.producer.send({
+        topic: `contest.user.score.updated`,
+        messages: [{ value: JSON.stringify(contestUser) }],
+      });
+
+      console.log(`Message sent to topic!!`);
+
+      // // update sorted set
+      // await this.redisService.zAdd(
+      //   `leaderboard:${contestUser.contestId}`,
+      //   contestUser.username,
+      //   contestUser.score,
+      // );
     } catch (error) {
       throw error;
     }
