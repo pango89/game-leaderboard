@@ -5,10 +5,12 @@ import { MySQLModule } from './modules/mysql.module';
 import { ContestUserModule } from './modules/contest-user.module';
 import { LeaderboardModule } from './modules/leaderboard.module';
 import { KafkaModule } from './modules/kafka.module';
+import { AuthModule } from './modules/auth.module';
 
 @Module({
   imports: [
     HealthModule,
+    AuthModule,
     RedisModule,
     KafkaModule,
     MySQLModule,
